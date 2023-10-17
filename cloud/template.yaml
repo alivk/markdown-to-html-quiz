@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Quiz Generator from Markdown to HTML
+
+Resources:
+
+  QuizMarkdownBucket:
+    Type: 'AWS::S3::Bucket'   # here we are going to generate a random source bucket
+
+  QuizHtmlBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:   # remove this two lines if you want manually creation
+      BucketName: 'alick-public-demo02'   # remove this two lines if you want manually creation
+
+  QuizProcessorLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: QuizProcessorLayer
+      Description: Dependency layer for the quiz processor
+      ContentUri: lambda_layer.zip
+      CompatibleRuntimes:
+        - python3.9
+      RetentionPolicy: Retain
+
+  QuizProcessorFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: markdown/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonS3FullAccess
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref QuizMarkdownBucket
+            Events: s3:ObjectCreated:*
+      Layers:
+        - !Ref QuizProcessorLayer
+      Environment:
+        Variables:
+          YOUR_DESTINATION_BUCKET: !Ref QuizHtmlBucket
